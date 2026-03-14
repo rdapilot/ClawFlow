@@ -28,7 +28,7 @@ def status() -> dict[str, object]:
         "app": context.settings.app_name,
         "adapter": context.settings.adapter_name,
         "connected": context.gateway.connect(),
-        "monitoring": context.monitoring.snapshot.__dict__,
+        "monitoring": context.monitoring.as_dict(),
         "latest_pipeline_id": context.store.latest().id if context.store.latest() else None,
     }
 
@@ -66,4 +66,3 @@ def run_pipeline(request: RunRequest) -> dict[str, object]:
         "final_output": pipeline.final_output,
         "task_count": len(pipeline.tasks),
     }
-

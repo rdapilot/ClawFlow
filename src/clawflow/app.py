@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from clawflow.adapters.openclaw.mock import MockOpenClawGateway
 from clawflow.config import ClawFlowSettings
@@ -8,7 +9,7 @@ from clawflow.services.agent_allocator import AgentAllocator
 from clawflow.services.intent_engine import IntentEngine
 from clawflow.services.monitoring import MonitoringService
 from clawflow.services.orchestrator import Orchestrator
-from clawflow.services.pipeline_store import InMemoryPipelineStore
+from clawflow.services.pipeline_store import JsonPipelineStore
 from clawflow.services.scheduler import Scheduler
 from clawflow.services.synthesizer import ResultSynthesizer
 from clawflow.services.task_decomposer import TaskDecomposer
@@ -19,14 +20,15 @@ class ApplicationContext:
     settings: ClawFlowSettings
     orchestrator: Orchestrator
     monitoring: MonitoringService
-    store: InMemoryPipelineStore
+    store: JsonPipelineStore
     gateway: MockOpenClawGateway
 
 
 def create_application_context() -> ApplicationContext:
     settings = ClawFlowSettings()
     monitoring = MonitoringService()
-    store = InMemoryPipelineStore()
+    store = JsonPipelineStore(path=Path(".clawflow") / "pipelines.json")
+    monitoring.bootstrap(store.list())
     gateway = MockOpenClawGateway()
     orchestrator = Orchestrator(
         gateway=gateway,
@@ -45,4 +47,3 @@ def create_application_context() -> ApplicationContext:
         store=store,
         gateway=gateway,
     )
-

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -8,7 +9,7 @@ from clawflow.domain.models import PipelineRun, TaskResult, TaskStatus
 from clawflow.services.agent_allocator import AgentAllocator
 from clawflow.services.intent_engine import IntentEngine
 from clawflow.services.monitoring import MonitoringService
-from clawflow.services.pipeline_store import InMemoryPipelineStore
+from clawflow.services.pipeline_store import JsonPipelineStore
 from clawflow.services.scheduler import Scheduler
 from clawflow.services.synthesizer import ResultSynthesizer
 from clawflow.services.task_decomposer import TaskDecomposer
@@ -24,7 +25,7 @@ class Orchestrator:
         scheduler: Scheduler,
         synthesizer: ResultSynthesizer,
         monitoring: MonitoringService,
-        store: InMemoryPipelineStore,
+        store: JsonPipelineStore,
     ) -> None:
         self.gateway = gateway
         self.intent_engine = intent_engine
@@ -39,11 +40,13 @@ class Orchestrator:
         intent = self.intent_engine.analyze(prompt)
         tasks = self.task_decomposer.decompose(intent)
         tasks = self.agent_allocator.allocate(tasks, self.gateway.discover_agents())
-        _layers = self.scheduler.execution_layers(tasks)
+        layers = self.scheduler.execution_layers(tasks)
 
         results: list[TaskResult] = []
-        for task in tasks:
-            results.append(self.gateway.execute_task(task))
+        for layer in layers:
+            with ThreadPoolExecutor(max_workers=len(layer)) as executor:
+                layer_results = list(executor.map(self.gateway.execute_task, layer))
+            results.extend(layer_results)
 
         final_output = self.synthesizer.synthesize(intent, results)
         status = (
@@ -64,4 +67,3 @@ class Orchestrator:
         self.store.save(pipeline)
         self.monitoring.record_pipeline(pipeline)
         return pipeline
-

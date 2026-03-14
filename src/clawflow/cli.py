@@ -37,6 +37,12 @@ def run(prompt: str) -> None:
 
 
 @app.command()
+def activate() -> None:
+    """Initialize ClawFlow and verify the configured adapter."""
+    activate_entrypoint()
+
+
+@app.command()
 def status() -> None:
     """Report engine and adapter status."""
     context = _context()
@@ -46,6 +52,7 @@ def status() -> None:
             "adapter": context.settings.adapter_name,
             "connected": context.gateway.connect(),
             "pipelines_run": context.monitoring.snapshot.pipelines_run,
+            "latest_pipeline_id": context.store.latest().id if context.store.latest() else None,
         },
         indent=2,
     ))
@@ -87,4 +94,3 @@ def activate_entrypoint() -> None:
 
 if __name__ == "__main__":
     app()
-

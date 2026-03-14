@@ -1,4 +1,5 @@
 .venv/
+.clawflow/
 __pycache__/
 .pytest_cache/
 .mypy_cache/
@@ -10,4 +11,3 @@ build/
 .DS_Store
 coverage.xml
 htmlcov/
-

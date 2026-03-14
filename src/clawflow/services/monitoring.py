@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 
 from clawflow.domain.models import PipelineRun, TaskResult, TaskStatus
 
@@ -17,6 +17,11 @@ class MonitoringSnapshot:
 @dataclass(slots=True)
 class MonitoringService:
     snapshot: MonitoringSnapshot = field(default_factory=MonitoringSnapshot)
+
+    def bootstrap(self, pipelines: list[PipelineRun]) -> None:
+        self.snapshot = MonitoringSnapshot()
+        for pipeline in reversed(pipelines):
+            self.record_pipeline(pipeline)
 
     def record_pipeline(self, pipeline: PipelineRun) -> None:
         self.snapshot.pipelines_run += 1
@@ -37,3 +42,5 @@ class MonitoringService:
             "failed": sum(1 for result in results if result.status == TaskStatus.failed),
         }
 
+    def as_dict(self) -> dict[str, int | float | str]:
+        return asdict(self.snapshot)
