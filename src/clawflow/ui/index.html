@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ClawFlow Console</title>
+    <style>
+      :root {
+        --bg: #f4efe5;
+        --panel: rgba(255, 252, 247, 0.88);
+        --ink: #1f2933;
+        --muted: #52606d;
+        --accent: #d16b2f;
+        --accent-dark: #8b3f15;
+        --line: rgba(31, 41, 51, 0.1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Iowan Old Style", "Palatino Linotype", serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(209, 107, 47, 0.18), transparent 30%),
+          linear-gradient(135deg, #f8f1e3, #ede3d1 45%, #d8d0c2);
+        min-height: 100vh;
+      }
+
+      main {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 32px 20px 48px;
+      }
+
+      .hero {
+        margin-bottom: 24px;
+      }
+
+      .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        color: var(--accent-dark);
+        font-size: 0.72rem;
+        margin: 0 0 12px;
+      }
+
+      h1 {
+        font-size: clamp(2.4rem, 5vw, 4.2rem);
+        line-height: 0.96;
+        margin: 0;
+        max-width: 10ch;
+      }
+
+      .subhead {
+        max-width: 56ch;
+        color: var(--muted);
+        margin-top: 14px;
+        font-size: 1.05rem;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px;
+        backdrop-filter: blur(14px);
+        box-shadow: 0 18px 60px rgba(31, 41, 51, 0.08);
+      }
+
+      .panel h2 {
+        margin: 0 0 10px;
+        font-size: 1.05rem;
+      }
+
+      form {
+        display: grid;
+        gap: 10px;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 120px;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        padding: 14px;
+        font: inherit;
+        resize: vertical;
+        background: rgba(255, 255, 255, 0.75);
+      }
+
+      button {
+        justify-self: start;
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 18px;
+        background: var(--accent);
+        color: white;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .metric {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .metric:last-child {
+        border-bottom: 0;
+      }
+
+      .pipelines {
+        margin-top: 16px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .pipeline {
+        padding: 12px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.66);
+        border: 1px solid var(--line);
+      }
+
+      .status {
+        color: var(--accent-dark);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-size: 0.72rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <p class="eyebrow">AI Orchestration Layer</p>
+        <h1>ClawFlow Control Surface</h1>
+        <p class="subhead">
+          Prompt intake, DAG orchestration, agent allocation, and execution history in one place.
+        </p>
+      </section>
+
+      <section class="grid">
+        <article class="panel">
+          <h2>Run Pipeline</h2>
+          <form id="run-form">
+            <textarea id="prompt" placeholder='Example: launch a social media marketing campaign for a startup'></textarea>
+            <button type="submit">Execute Prompt</button>
+          </form>
+          <pre id="result"></pre>
+        </article>
+
+        <article class="panel">
+          <h2>System Status</h2>
+          <div id="status"></div>
+        </article>
+      </section>
+
+      <section class="panel" style="margin-top: 16px;">
+        <h2>Recent Pipelines</h2>
+        <div id="pipelines" class="pipelines"></div>
+      </section>
+    </main>
+
+    <script>
+      async function loadStatus() {
+        const response = await fetch('/api/v1/status');
+        const data = await response.json();
+        const status = document.getElementById('status');
+        status.innerHTML = `
+          <div class="metric"><span>Adapter</span><strong>${data.adapter}</strong></div>
+          <div class="metric"><span>Connected</span><strong>${data.connected}</strong></div>
+          <div class="metric"><span>Pipelines Run</span><strong>${data.monitoring.pipelines_run}</strong></div>
+          <div class="metric"><span>Avg Task Latency</span><strong>${data.monitoring.average_latency_ms.toFixed(1)} ms</strong></div>
+          <div class="metric"><span>Last Status</span><strong>${data.monitoring.last_pipeline_status}</strong></div>
+        `;
+      }
+
+      async function loadPipelines() {
+        const response = await fetch('/api/v1/pipelines');
+        const data = await response.json();
+        const root = document.getElementById('pipelines');
+        root.innerHTML = data.length
+          ? data.map((pipeline) => `
+              <article class="pipeline">
+                <div class="status">${pipeline.status}</div>
+                <h3>${pipeline.prompt}</h3>
+                <p>${pipeline.tasks.length} tasks</p>
+                <pre>${pipeline.final_output}</pre>
+              </article>
+            `).join('')
+          : '<p>No pipelines have been executed yet.</p>';
+      }
+
+      document.getElementById('run-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const prompt = document.getElementById('prompt').value.trim();
+        if (!prompt) {
+          return;
+        }
+
+        const response = await fetch('/api/v1/run', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({prompt}),
+        });
+        const data = await response.json();
+        document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+        await loadStatus();
+        await loadPipelines();
+      });
+
+      loadStatus();
+      loadPipelines();
+    </script>
+  </body>
+</html>
+
